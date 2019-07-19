@@ -24,9 +24,9 @@
 #include <endpointvolume.h>
 
 // Stuff missing in MinGW
-CLSID my_CLSID_MMDeviceEnumerator = {0xBCDE0395,0xE52F,0x467C,{0x8E,0x3D,0xC4,0x57,0x92,0x91,0x69,0x2E}};
-GUID my_IID_IMMDeviceEnumerator = {0xA95664D2,0x9614,0x4F35,{0xA7,0x46,0xDE,0x8D,0xB6,0x36,0x17,0xE6}};
-GUID my_IID_IAudioEndpointVolume = {0x5CDF2C82,0x841E,0x4546,{0x97,0x22,0x0C,0xF7,0x40,0x78,0x22,0x9A}};
+CLSID my_CLSID_MMDeviceEnumerator = {0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
+GUID my_IID_IMMDeviceEnumerator = {0xA95664D2, 0x9614, 0x4F35, {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};
+GUID my_IID_IAudioEndpointVolume = {0x5CDF2C82, 0x841E, 0x4546, {0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A}};
 
 // App
 #define APP_NAME L"AltDrag"
@@ -42,70 +42,100 @@ GUID my_IID_IAudioEndpointVolume = {0x5CDF2C82,0x841E,0x4546,{0x97,0x22,0x0C,0xF
 HWND g_hwnd;
 
 // Enumerators
-enum action {ACTION_NONE=0, ACTION_MOVE, ACTION_RESIZE, ACTION_MINIMIZE, ACTION_CENTER, ACTION_ALWAYSONTOP, ACTION_CLOSE, ACTION_LOWER, ACTION_ALTTAB, ACTION_VOLUME, ACTION_TRANSPARENCY};
-enum button {BUTTON_NONE=0, BUTTON_LMB, BUTTON_MMB, BUTTON_RMB, BUTTON_MB4, BUTTON_MB5};
-enum resize {RESIZE_NONE=0, RESIZE_TOP, RESIZE_RIGHT, RESIZE_BOTTOM, RESIZE_LEFT, RESIZE_CENTER};
-enum cursor {HAND, SIZENWSE, SIZENESW, SIZENS, SIZEWE, SIZEALL};
+enum action
+{
+    ACTION_NONE = 0,
+    ACTION_MOVE,
+    ACTION_RESIZE,
+    ACTION_MINIMIZE,
+    ACTION_CENTER,
+    ACTION_ALWAYSONTOP,
+    ACTION_CLOSE,
+    ACTION_LOWER,
+    ACTION_ALTTAB,
+    ACTION_VOLUME,
+    ACTION_TRANSPARENCY
+};
+enum button
+{
+    BUTTON_NONE = 0, BUTTON_LMB, BUTTON_MMB, BUTTON_RMB, BUTTON_MB4, BUTTON_MB5
+};
+enum resize
+{
+    RESIZE_NONE = 0, RESIZE_TOP, RESIZE_RIGHT, RESIZE_BOTTOM, RESIZE_LEFT, RESIZE_CENTER
+};
+enum cursor
+{
+    HAND, SIZENWSE, SIZENESW, SIZENS, SIZEWE, SIZEALL
+};
 
 // Some variables must be shared so that CallWndProc hooks can access them
 #define shareattr __attribute__((section ("shared"), shared))
 
 // Window database
 #define NUMWNDDB 30
-struct wnddata {
-  HWND hwnd;
-  short restore;
-  int width;
-  int height;
-  struct {
+struct wnddata
+{
+    HWND hwnd;
+    short restore;
     int width;
     int height;
-  } last;
+    struct
+    {
+        int width;
+        int height;
+    } last;
 };
-struct {
-  struct wnddata items[NUMWNDDB];
-  struct wnddata *pos;
+struct
+{
+    struct wnddata items[NUMWNDDB];
+    struct wnddata *pos;
 } wnddb;
 
 // State
-struct {
-  HWND hwnd;
-  HWND mdiclient;
-  short alt;
-  short activated; // Keep track on if an action has begun since the hotkey was depressed, in order to successfully block Alt from triggering a menu
-  short ctrl;
-  short interrupted;
-  short updaterate;
-  unsigned int clicktime;
-  POINT clickpt;
-  POINT prevpt;
-  POINT offset;
-  struct {
-    enum resize x, y;
-  } resize;
-  short blockaltup;
-  short blockmouseup;
-  short ignorectrl;
-  short locked;
-  struct wnddata *wndentry;
-  struct {
-    HMONITOR monitor;
-    short maximized;
-    int width;
-    int height;
-    int right;
-    int bottom;
-  } origin;
-  struct {
-    POINT ptMinTrackSize;
-    POINT ptMaxTrackSize;
-  } mmi;
+struct
+{
+    HWND hwnd;
+    HWND mdiclient;
+    short alt;
+    short activated; // Keep track on if an action has begun since the hotkey was depressed, in order to successfully block Alt from triggering a menu
+    short ctrl;
+    short interrupted;
+    short updaterate;
+    unsigned int clicktime;
+    POINT clickpt;
+    POINT prevpt;
+    POINT offset;
+    struct
+    {
+        enum resize x, y;
+    } resize;
+    short blockaltup;
+    short blockmouseup;
+    short ignorectrl;
+    short locked;
+    struct wnddata *wndentry;
+    struct
+    {
+        HMONITOR monitor;
+        short maximized;
+        int width;
+        int height;
+        int right;
+        int bottom;
+    } origin;
+    struct
+    {
+        POINT ptMinTrackSize;
+        POINT ptMaxTrackSize;
+    } mmi;
 } state;
 
-struct {
-  short shift;
-  short snap;
-  enum action action;
+struct
+{
+    short shift;
+    short snap;
+    enum action action;
 } sharedstate shareattr = {0, 0, ACTION_NONE};
 
 // Snap
@@ -119,47 +149,56 @@ HWND progman = NULL;
 
 // Settings
 #define MAXKEYS 10
-struct {
-  int AutoFocus;
-  int AutoSnap;
-  int AutoRemaximize;
-  int Aero;
-  int MDI;
-  int InactiveScroll;
-  int LowerWithMMB;
-  int SnapThreshold;
-  int FocusOnTyping;
-  struct {
-    int Cursor;
-    int MoveRate;
-    int ResizeRate;
-  } Performance;
-  struct {
-    unsigned char keys[MAXKEYS];
-    int length;
-  } Hotkeys;
-  struct {
-    enum action LMB, MMB, RMB, MB4, MB5, Scroll;
-  } Mouse;
+struct
+{
+    int AutoFocus;
+    int AutoSnap;
+    int AutoRemaximize;
+    int Aero;
+    int MDI;
+    int InactiveScroll;
+    int LowerWithMMB;
+    int SnapThreshold;
+    int FocusOnTyping;
+    struct
+    {
+        int Cursor;
+        int MoveRate;
+        int ResizeRate;
+    } Performance;
+    struct
+    {
+        unsigned char keys[MAXKEYS];
+        int length;
+    } Hotkeys;
+    struct
+    {
+        enum action LMB, MMB, RMB, MB4, MB5, Scroll;
+    } Mouse;
 } sharedsettings shareattr;
 short sharedsettings_loaded shareattr = 0;
 wchar_t inipath[MAX_PATH] shareattr;
 
 // Blacklist (not shared since dynamically allocated)
-struct blacklistitem {
-  wchar_t *title;
-  wchar_t *classname;
+struct blacklistitem
+{
+    wchar_t *title;
+    wchar_t *classname;
 };
-struct blacklist {
-  struct blacklistitem *items;
-  int length;
-  wchar_t *data;
+struct blacklist
+{
+    struct blacklistitem *items;
+    int length;
+    wchar_t *data;
 };
-struct {
-  struct blacklist ProcessBlacklist;
-  struct blacklist Blacklist;
-  struct blacklist Snaplist;
-} settings = {{NULL,0}, {NULL,0}, {NULL,0}};
+struct
+{
+    struct blacklist ProcessBlacklist;
+    struct blacklist Blacklist;
+    struct blacklist Snaplist;
+} settings = {{NULL, 0},
+              {NULL, 0},
+              {NULL, 0}};
 
 // Cursor data
 HWND cursorwnd shareattr = NULL;
@@ -179,429 +218,523 @@ short unload shareattr = 0;
 #define ERROR_WRITETOFILE
 #include "include/error.c"
 #else
-#define Error(a,b,c)
+#define Error(a, b, c)
 #endif
 
 // Blacklist
-int blacklisted(HWND hwnd, struct blacklist *list) {
-  wchar_t title[256]=L"", classname[256]=L"";
-  int i;
-
-  // Do not check if list is empty
-  if (list->length == 0) {
-    return 0;
-  }
-
-  // ProcessBlacklist is case-insensitive
-  if (list == &settings.ProcessBlacklist) {
-    DWORD pid;
-    GetWindowThreadProcessId(hwnd, &pid);
-    HANDLE proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
-    GetProcessImageFileName(proc, title, ARRAY_SIZE(title));
-    CloseHandle(proc);
-    PathStripPath(title);
-    for (i=0; i < list->length; i++) {
-      if (!wcsicmp(title,list->items[i].title)) {
-        return 1;
-      }
+int blacklisted(HWND hwnd, struct blacklist *list)
+{
+    wchar_t title[256] = L"", classname[256] = L"";
+    int i;
+    
+    // Do not check if list is empty
+    if (list->length == 0)
+    {
+        return 0;
+    }
+    
+    // ProcessBlacklist is case-insensitive
+    if (list == &settings.ProcessBlacklist)
+    {
+        DWORD pid;
+        GetWindowThreadProcessId(hwnd, &pid);
+        HANDLE proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+        GetProcessImageFileName(proc, title, ARRAY_SIZE(title));
+        CloseHandle(proc);
+        PathStripPath(title);
+        for (i = 0; i < list->length; i++)
+        {
+            if (!wcsicmp(title, list->items[i].title))
+            {
+                return 1;
+            }
+        }
+        return 0;
+    }
+    
+    GetWindowText(hwnd, title, ARRAY_SIZE(title));
+    GetClassName(hwnd, classname, ARRAY_SIZE(classname));
+    for (i = 0; i < list->length; i++)
+    {
+        if ((list->items[i].title == NULL && !wcscmp(classname, list->items[i].classname))
+            || (list->items[i].classname == NULL && !wcscmp(title, list->items[i].title))
+            ||
+            (list->items[i].title != NULL && list->items[i].classname != NULL && !wcscmp(title, list->items[i].title) &&
+             !wcscmp(classname, list->items[i].classname)))
+        {
+            return 1;
+        }
     }
     return 0;
-  }
-
-  GetWindowText(hwnd, title, ARRAY_SIZE(title));
-  GetClassName(hwnd, classname, ARRAY_SIZE(classname));
-  for (i=0; i < list->length; i++) {
-    if ((list->items[i].title == NULL && !wcscmp(classname,list->items[i].classname))
-     || (list->items[i].classname == NULL && !wcscmp(title,list->items[i].title))
-     || (list->items[i].title != NULL && list->items[i].classname != NULL && !wcscmp(title,list->items[i].title) && !wcscmp(classname,list->items[i].classname))) {
-      return 1;
-    }
-  }
-  return 0;
 }
 
 // Enumerate
 int monitors_alloc = 0;
-BOOL CALLBACK EnumMonitorsProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-  // Make sure we have enough space allocated
-  if (nummonitors == monitors_alloc) {
-    monitors_alloc++;
-    monitors = realloc(monitors, monitors_alloc*sizeof(RECT));
-  }
-  // Add monitor
-  monitors[nummonitors++] = *lprcMonitor;
-  return TRUE;
+
+BOOL CALLBACK EnumMonitorsProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+    // Make sure we have enough space allocated
+    if (nummonitors == monitors_alloc)
+    {
+        monitors_alloc++;
+        monitors = realloc(monitors, monitors_alloc * sizeof(RECT));
+    }
+    // Add monitor
+    monitors[nummonitors++] = *lprcMonitor;
+    return TRUE;
 }
 
 int wnds_alloc = 0;
-BOOL CALLBACK EnumWindowsProc(HWND window, LPARAM lParam) {
-  // Make sure we have enough space allocated
-  if (numwnds == wnds_alloc) {
-    wnds_alloc += 20;
-    wnds = realloc(wnds, wnds_alloc*sizeof(RECT));
-  }
 
-  // Only store window if it's visible, not minimized to taskbar, not the window we are dragging and not blacklisted
-  RECT wnd;
-  LONG_PTR style;
-  if (window != state.hwnd && window != progman
-   && IsWindowVisible(window) && !IsIconic(window)
-   && (((style=GetWindowLongPtr(window,GWL_STYLE))&WS_CAPTION) == WS_CAPTION || blacklisted(window,&settings.Snaplist))
-   && GetWindowRect(window,&wnd) != 0
-  ) {
-    // Maximized?
-    if (IsZoomed(window)) {
-      // Get monitor size
-      HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
-      MONITORINFO mi = { sizeof(MONITORINFO) };
-      GetMonitorInfo(monitor, &mi);
-      // Crop this window so that it does not exceed the size of the monitor
-      // This is done because when maximized, windows have an extra, invisible, border (a border that stretches onto other monitors)
-      wnd.left = max(wnd.left, mi.rcMonitor.left);
-      wnd.top = max(wnd.top, mi.rcMonitor.top);
-      wnd.right = min(wnd.right, mi.rcMonitor.right);
-      wnd.bottom = min(wnd.bottom, mi.rcMonitor.bottom);
+BOOL CALLBACK EnumWindowsProc(HWND window, LPARAM lParam)
+{
+    // Make sure we have enough space allocated
+    if (numwnds == wnds_alloc)
+    {
+        wnds_alloc += 20;
+        wnds = realloc(wnds, wnds_alloc * sizeof(RECT));
     }
-
-    // Return if this window is overlapped by another window
-    int i;
-    for (i=0; i < numwnds; i++) {
-      if (wnd.left >= wnds[i].left && wnd.top >= wnds[i].top && wnd.right <= wnds[i].right && wnd.bottom <= wnds[i].bottom) {
-        return TRUE;
-      }
+    
+    // Only store window if it's visible, not minimized to taskbar, not the window we are dragging and not blacklisted
+    RECT wnd;
+    LONG_PTR style;
+    if (window != state.hwnd && window != progman
+        && IsWindowVisible(window) && !IsIconic(window)
+        && (((style = GetWindowLongPtr(window, GWL_STYLE)) & WS_CAPTION) == WS_CAPTION ||
+            blacklisted(window, &settings.Snaplist))
+        && GetWindowRect(window, &wnd) != 0
+            )
+    {
+        // Maximized?
+        if (IsZoomed(window))
+        {
+            // Get monitor size
+            HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO mi = {sizeof(MONITORINFO)};
+            GetMonitorInfo(monitor, &mi);
+            // Crop this window so that it does not exceed the size of the monitor
+            // This is done because when maximized, windows have an extra, invisible, border (a border that stretches onto other monitors)
+            wnd.left = max(wnd.left, mi.rcMonitor.left);
+            wnd.top = max(wnd.top, mi.rcMonitor.top);
+            wnd.right = min(wnd.right, mi.rcMonitor.right);
+            wnd.bottom = min(wnd.bottom, mi.rcMonitor.bottom);
+        }
+        
+        // Return if this window is overlapped by another window
+        int i;
+        for (i = 0; i < numwnds; i++)
+        {
+            if (wnd.left >= wnds[i].left && wnd.top >= wnds[i].top && wnd.right <= wnds[i].right &&
+                wnd.bottom <= wnds[i].bottom)
+            {
+                return TRUE;
+            }
+        }
+        
+        // Add window
+        wnds[numwnds++] = wnd;
+        
+        // Use this to print the title and classname of the windows that are snapable
+        /*
+        FILE *f = OpenLog(L"ab");
+        wchar_t title[100], classname[100];
+        GetWindowText(window, title, ARRAY_SIZE(title));
+        GetClassName(window, classname, ARRAY_SIZE(classname));
+        fwprintf(f, L"window: %s|%s\n", title, classname);
+        CloseLog(f);
+        */
     }
-
-    // Add window
-    wnds[numwnds++] = wnd;
-
-    // Use this to print the title and classname of the windows that are snapable
-    /*
-    FILE *f = OpenLog(L"ab");
-    wchar_t title[100], classname[100];
-    GetWindowText(window, title, ARRAY_SIZE(title));
-    GetClassName(window, classname, ARRAY_SIZE(classname));
-    fwprintf(f, L"window: %s|%s\n", title, classname);
-    CloseLog(f);
-    */
-  }
-  return TRUE;
+    return TRUE;
 }
 
 int hwnds_alloc = 0;
-BOOL CALLBACK EnumAltTabWindows(HWND window, LPARAM lParam) {
-  // Make sure we have enough space allocated
-  if (numhwnds == hwnds_alloc) {
-    hwnds_alloc += 20;
-    hwnds = realloc(hwnds, hwnds_alloc*sizeof(HWND));
-  }
 
-  // Only store window if it's visible, not minimized to taskbar and on the same monitor as the cursor
-  if (IsWindowVisible(window) && !IsIconic(window)
-   && (GetWindowLongPtr(window,GWL_STYLE)&WS_CAPTION) == WS_CAPTION
-   && state.origin.monitor == MonitorFromWindow(window,MONITOR_DEFAULTTONULL)
-  ) {
-    hwnds[numhwnds++] = window;
-  }
-  return TRUE;
+BOOL CALLBACK EnumAltTabWindows(HWND window, LPARAM lParam)
+{
+    // Make sure we have enough space allocated
+    if (numhwnds == hwnds_alloc)
+    {
+        hwnds_alloc += 20;
+        hwnds = realloc(hwnds, hwnds_alloc * sizeof(HWND));
+    }
+    
+    // Only store window if it's visible, not minimized to taskbar and on the same monitor as the cursor
+    if (IsWindowVisible(window) && !IsIconic(window)
+        && (GetWindowLongPtr(window, GWL_STYLE) & WS_CAPTION) == WS_CAPTION
+        && state.origin.monitor == MonitorFromWindow(window, MONITOR_DEFAULTTONULL)
+            )
+    {
+        hwnds[numhwnds++] = window;
+    }
+    return TRUE;
 }
 
-void EnumMdi() {
-  // Add MDIClient as the monitor
-  RECT wnd;
-  if (GetClientRect(state.mdiclient,&wnd) != 0) {
-    monitors[nummonitors++] = wnd;
-  }
-  if (sharedstate.snap < 2) {
-    return;
-  }
-
-  // Add all the siblings to the window
-  POINT mdiclientpt = {0,0};
-  if (ClientToScreen(state.mdiclient,&mdiclientpt) == FALSE) {
-    return;
-  }
-  HWND window = GetWindow(state.mdiclient, GW_CHILD);
-  while (window != NULL) {
-    if (window == state.hwnd) {
-      window = GetWindow(window, GW_HWNDNEXT);
-      continue;
+void EnumMdi()
+{
+    // Add MDIClient as the monitor
+    RECT wnd;
+    if (GetClientRect(state.mdiclient, &wnd) != 0)
+    {
+        monitors[nummonitors++] = wnd;
     }
-    if (numwnds == wnds_alloc) {
-      wnds_alloc += 20;
-      wnds = realloc(wnds, wnds_alloc*sizeof(RECT));
+    if (sharedstate.snap < 2)
+    {
+        return;
     }
-    if (GetWindowRect(window,&wnd) != 0) {
-      wnds[numwnds++] = (RECT) { wnd.left-mdiclientpt.x, wnd.top-mdiclientpt.y, wnd.right-mdiclientpt.x, wnd.bottom-mdiclientpt.y };
+    
+    // Add all the siblings to the window
+    POINT mdiclientpt = {0, 0};
+    if (ClientToScreen(state.mdiclient, &mdiclientpt) == FALSE)
+    {
+        return;
     }
-    window = GetWindow(window, GW_HWNDNEXT);
-  }
+    HWND window = GetWindow(state.mdiclient, GW_CHILD);
+    while (window != NULL)
+    {
+        if (window == state.hwnd)
+        {
+            window = GetWindow(window, GW_HWNDNEXT);
+            continue;
+        }
+        if (numwnds == wnds_alloc)
+        {
+            wnds_alloc += 20;
+            wnds = realloc(wnds, wnds_alloc * sizeof(RECT));
+        }
+        if (GetWindowRect(window, &wnd) != 0)
+        {
+            wnds[numwnds++] = (RECT) {wnd.left - mdiclientpt.x, wnd.top - mdiclientpt.y, wnd.right - mdiclientpt.x,
+                                      wnd.bottom - mdiclientpt.y};
+        }
+        window = GetWindow(window, GW_HWNDNEXT);
+    }
 }
 
-void Enum() {
-  nummonitors = 0;
-  numwnds = 0;
-
-  // MDI
-  if (state.mdiclient) {
-    EnumMdi();
-    return;
-  }
-
-  // Update handle to progman
-  if (!IsWindow(progman)) {
-    progman = FindWindow(L"Progman", L"Program Manager");
-  }
-
-  // Enumerate monitors
-  EnumDisplayMonitors(NULL, NULL, EnumMonitorsProc, 0);
-
-  // Enumerate windows
-  HWND taskbar = FindWindow(L"Shell_TrayWnd", NULL);
-  RECT wnd;
-  if (taskbar != NULL && GetWindowRect(taskbar,&wnd) != 0) {
-    wnds[numwnds++] = wnd;
-  }
-  if (sharedstate.snap >= 2) {
-    EnumWindows(EnumWindowsProc, 0);
-  }
-
-  // Use this to print the monitors and windows
-  /*
-  FILE *f = OpenLog(L"ab");
-  fwprintf(f, L"nummonitors: %d\n", nummonitors);
-  int k;
-  for (k=0; k < nummonitors; k++) {
-    fwprintf(f, L"mon #%02d: left %d, top %d, right %d, bottom %d\n", k, monitors[k].left, monitors[k].top, monitors[k].right, monitors[k].bottom);
-  }
-  fwprintf(f, L"numwnds: %d\n", numwnds);
-  for (k=0; k < numwnds; k++) {
-    fwprintf(f, L"wnd #%02d: %dx%d @ %dx%d\n", k, wnds[k].right-wnds[k].left, wnds[k].bottom-wnds[k].top, wnds[k].left, wnds[k].top);
-  }
-  fwprintf(f, L"\n");
-  CloseLog(f);
-  */
+void Enum()
+{
+    nummonitors = 0;
+    numwnds = 0;
+    
+    // MDI
+    if (state.mdiclient)
+    {
+        EnumMdi();
+        return;
+    }
+    
+    // Update handle to progman
+    if (!IsWindow(progman))
+    {
+        progman = FindWindow(L"Progman", L"Program Manager");
+    }
+    
+    // Enumerate monitors
+    EnumDisplayMonitors(NULL, NULL, EnumMonitorsProc, 0);
+    
+    // Enumerate windows
+    HWND taskbar = FindWindow(L"Shell_TrayWnd", NULL);
+    RECT wnd;
+    if (taskbar != NULL && GetWindowRect(taskbar, &wnd) != 0)
+    {
+        wnds[numwnds++] = wnd;
+    }
+    if (sharedstate.snap >= 2)
+    {
+        EnumWindows(EnumWindowsProc, 0);
+    }
+    
+    // Use this to print the monitors and windows
+    /*
+    FILE *f = OpenLog(L"ab");
+    fwprintf(f, L"nummonitors: %d\n", nummonitors);
+    int k;
+    for (k=0; k < nummonitors; k++) {
+      fwprintf(f, L"mon #%02d: left %d, top %d, right %d, bottom %d\n", k, monitors[k].left, monitors[k].top, monitors[k].right, monitors[k].bottom);
+    }
+    fwprintf(f, L"numwnds: %d\n", numwnds);
+    for (k=0; k < numwnds; k++) {
+      fwprintf(f, L"wnd #%02d: %dx%d @ %dx%d\n", k, wnds[k].right-wnds[k].left, wnds[k].bottom-wnds[k].top, wnds[k].left, wnds[k].top);
+    }
+    fwprintf(f, L"\n");
+    CloseLog(f);
+    */
 }
 
-void MoveSnap(int *posx, int *posy, int wndwidth, int wndheight) {
-  // Enumerate monitors and windows
-  Enum();
-
-  // thresholdx and thresholdy will shrink to make sure the dragged window will snap to the closest windows
-  int i, j, thresholdx, thresholdy, stuckx=0, stucky=0, stickx=0, sticky=0;
-  thresholdx = thresholdy = sharedsettings.SnapThreshold;
-  // Loop monitors and windows
-  for (i=0, j=0; i < nummonitors || j < numwnds; ) {
-    RECT snapwnd;
-    int snapinside;
-
-    // Get snapwnd
-    if (i < nummonitors) {
-      snapwnd = monitors[i];
-      snapinside = 1;
-      i++;
+void MoveSnap(int *posx, int *posy, int wndwidth, int wndheight)
+{
+    // Enumerate monitors and windows
+    Enum();
+    
+    // thresholdx and thresholdy will shrink to make sure the dragged window will snap to the closest windows
+    int i, j, thresholdx, thresholdy, stuckx = 0, stucky = 0, stickx = 0, sticky = 0;
+    thresholdx = thresholdy = sharedsettings.SnapThreshold;
+    // Loop monitors and windows
+    for (i = 0, j = 0; i < nummonitors || j < numwnds;)
+    {
+        RECT snapwnd;
+        int snapinside;
+        
+        // Get snapwnd
+        if (i < nummonitors)
+        {
+            snapwnd = monitors[i];
+            snapinside = 1;
+            i++;
+        }
+        else if (j < numwnds)
+        {
+            snapwnd = wnds[j];
+            snapinside = (sharedstate.snap != 2);
+            j++;
+        }
+        
+        // Check if posx snaps
+        if ((snapwnd.top - thresholdx < *posy && *posy < snapwnd.bottom + thresholdx)
+            || (*posy - thresholdx < snapwnd.top && snapwnd.top < *posy + wndheight + thresholdx))
+        {
+            int snapinside_cond = (snapinside || *posy + wndheight - thresholdx < snapwnd.top ||
+                                   snapwnd.bottom < *posy + thresholdx);
+            if (*posx - thresholdx < snapwnd.right && snapwnd.right < *posx + thresholdx)
+            {
+                // The left edge of the dragged window will snap to this window's right edge
+                stuckx = 1;
+                stickx = snapwnd.right;
+                thresholdx = snapwnd.right - *posx;
+            }
+            else if (snapinside_cond && *posx + wndwidth - thresholdx < snapwnd.right &&
+                     snapwnd.right < *posx + wndwidth + thresholdx)
+            {
+                // The right edge of the dragged window will snap to this window's right edge
+                stuckx = 1;
+                stickx = snapwnd.right - wndwidth;
+                thresholdx = snapwnd.right - (*posx + wndwidth);
+            }
+            else if (snapinside_cond && *posx - thresholdx < snapwnd.left && snapwnd.left < *posx + thresholdx)
+            {
+                // The left edge of the dragged window will snap to this window's left edge
+                stuckx = 1;
+                stickx = snapwnd.left;
+                thresholdx = snapwnd.left - *posx;
+            }
+            else if (*posx + wndwidth - thresholdx < snapwnd.left && snapwnd.left < *posx + wndwidth + thresholdx)
+            {
+                // The right edge of the dragged window will snap to this window's left edge
+                stuckx = 1;
+                stickx = snapwnd.left - wndwidth;
+                thresholdx = snapwnd.left - (*posx + wndwidth);
+            }
+        }
+        
+        // Check if posy snaps
+        if ((snapwnd.left - thresholdy < *posx && *posx < snapwnd.right + thresholdy)
+            || (*posx - thresholdy < snapwnd.left && snapwnd.left < *posx + wndwidth + thresholdy))
+        {
+            int snapinside_cond = (snapinside || *posx + wndwidth - thresholdy < snapwnd.left ||
+                                   snapwnd.right < *posx + thresholdy);
+            if (*posy - thresholdy < snapwnd.bottom && snapwnd.bottom < *posy + thresholdy)
+            {
+                // The top edge of the dragged window will snap to this window's bottom edge
+                stucky = 1;
+                sticky = snapwnd.bottom;
+                thresholdy = snapwnd.bottom - *posy;
+            }
+            else if (snapinside_cond && *posy + wndheight - thresholdy < snapwnd.bottom &&
+                     snapwnd.bottom < *posy + wndheight + thresholdy)
+            {
+                // The bottom edge of the dragged window will snap to this window's bottom edge
+                stucky = 1;
+                sticky = snapwnd.bottom - wndheight;
+                thresholdy = snapwnd.bottom - (*posy + wndheight);
+            }
+            else if (snapinside_cond && *posy - thresholdy < snapwnd.top && snapwnd.top < *posy + thresholdy)
+            {
+                // The top edge of the dragged window will snap to this window's top edge
+                stucky = 1;
+                sticky = snapwnd.top;
+                thresholdy = snapwnd.top - *posy;
+            }
+            else if (*posy + wndheight - thresholdy < snapwnd.top && snapwnd.top < *posy + wndheight + thresholdy)
+            {
+                // The bottom edge of the dragged window will snap to this window's top edge
+                stucky = 1;
+                sticky = snapwnd.top - wndheight;
+                thresholdy = snapwnd.top - (*posy + wndheight);
+            }
+        }
     }
-    else if (j < numwnds) {
-      snapwnd = wnds[j];
-      snapinside = (sharedstate.snap != 2);
-      j++;
+    
+    // Update posx and posy
+    if (stuckx)
+    {
+        *posx = stickx;
     }
-
-    // Check if posx snaps
-    if ((snapwnd.top-thresholdx < *posy && *posy < snapwnd.bottom+thresholdx)
-     || (*posy-thresholdx < snapwnd.top && snapwnd.top < *posy+wndheight+thresholdx)) {
-      int snapinside_cond = (snapinside || *posy+wndheight-thresholdx < snapwnd.top || snapwnd.bottom < *posy+thresholdx);
-      if (*posx-thresholdx < snapwnd.right && snapwnd.right < *posx+thresholdx) {
-        // The left edge of the dragged window will snap to this window's right edge
-        stuckx = 1;
-        stickx = snapwnd.right;
-        thresholdx = snapwnd.right-*posx;
-      }
-      else if (snapinside_cond && *posx+wndwidth-thresholdx < snapwnd.right && snapwnd.right < *posx+wndwidth+thresholdx) {
-        // The right edge of the dragged window will snap to this window's right edge
-        stuckx = 1;
-        stickx = snapwnd.right-wndwidth;
-        thresholdx = snapwnd.right-(*posx+wndwidth);
-      }
-      else if (snapinside_cond && *posx-thresholdx < snapwnd.left && snapwnd.left < *posx+thresholdx) {
-        // The left edge of the dragged window will snap to this window's left edge
-        stuckx = 1;
-        stickx = snapwnd.left;
-        thresholdx = snapwnd.left-*posx;
-      }
-      else if (*posx+wndwidth-thresholdx < snapwnd.left && snapwnd.left < *posx+wndwidth+thresholdx) {
-        // The right edge of the dragged window will snap to this window's left edge
-        stuckx = 1;
-        stickx = snapwnd.left-wndwidth;
-        thresholdx = snapwnd.left-(*posx+wndwidth);
-      }
+    if (stucky)
+    {
+        *posy = sticky;
     }
-
-    // Check if posy snaps
-    if ((snapwnd.left-thresholdy < *posx && *posx < snapwnd.right+thresholdy)
-     || (*posx-thresholdy < snapwnd.left && snapwnd.left < *posx+wndwidth+thresholdy)) {
-      int snapinside_cond = (snapinside || *posx+wndwidth-thresholdy < snapwnd.left || snapwnd.right < *posx+thresholdy);
-      if (*posy-thresholdy < snapwnd.bottom && snapwnd.bottom < *posy+thresholdy) {
-        // The top edge of the dragged window will snap to this window's bottom edge
-        stucky = 1;
-        sticky = snapwnd.bottom;
-        thresholdy = snapwnd.bottom-*posy;
-      }
-      else if (snapinside_cond && *posy+wndheight-thresholdy < snapwnd.bottom && snapwnd.bottom < *posy+wndheight+thresholdy) {
-        // The bottom edge of the dragged window will snap to this window's bottom edge
-        stucky = 1;
-        sticky = snapwnd.bottom-wndheight;
-        thresholdy = snapwnd.bottom-(*posy+wndheight);
-      }
-      else if (snapinside_cond && *posy-thresholdy < snapwnd.top && snapwnd.top < *posy+thresholdy) {
-        // The top edge of the dragged window will snap to this window's top edge
-        stucky = 1;
-        sticky = snapwnd.top;
-        thresholdy = snapwnd.top-*posy;
-      }
-      else if (*posy+wndheight-thresholdy < snapwnd.top && snapwnd.top < *posy+wndheight+thresholdy) {
-        // The bottom edge of the dragged window will snap to this window's top edge
-        stucky = 1;
-        sticky = snapwnd.top-wndheight;
-        thresholdy = snapwnd.top-(*posy+wndheight);
-      }
-    }
-  }
-
-  // Update posx and posy
-  if (stuckx) {
-    *posx = stickx;
-  }
-  if (stucky) {
-    *posy = sticky;
-  }
 }
 
-void ResizeSnap(int *posx, int *posy, int *wndwidth, int *wndheight) {
-  Enum(); // Enumerate monitors and windows
-
-  // thresholdx and thresholdy will shrink to make sure the dragged window will snap to the closest windows
-  int i, j, thresholdx, thresholdy, stuckleft=0, stucktop=0, stuckright=0, stuckbottom=0, stickleft=0, sticktop=0, stickright=0, stickbottom=0;
-  thresholdx = thresholdy = sharedsettings.SnapThreshold;
-  // Loop monitors and windows
-  for (i=0, j=0; i < nummonitors || j < numwnds; ) {
-    RECT snapwnd;
-    int snapinside;
-
-    // Get snapwnd
-    if (i < nummonitors) {
-      snapwnd = monitors[i];
-      snapinside = 1;
-      i++;
+void ResizeSnap(int *posx, int *posy, int *wndwidth, int *wndheight)
+{
+    Enum(); // Enumerate monitors and windows
+    
+    // thresholdx and thresholdy will shrink to make sure the dragged window will snap to the closest windows
+    int i, j, thresholdx, thresholdy, stuckleft = 0, stucktop = 0, stuckright = 0, stuckbottom = 0, stickleft = 0, sticktop = 0, stickright = 0, stickbottom = 0;
+    thresholdx = thresholdy = sharedsettings.SnapThreshold;
+    // Loop monitors and windows
+    for (i = 0, j = 0; i < nummonitors || j < numwnds;)
+    {
+        RECT snapwnd;
+        int snapinside;
+        
+        // Get snapwnd
+        if (i < nummonitors)
+        {
+            snapwnd = monitors[i];
+            snapinside = 1;
+            i++;
+        }
+        else if (j < numwnds)
+        {
+            snapwnd = wnds[j];
+            snapinside = (sharedstate.snap != 2);
+            j++;
+        }
+        
+        // Check if posx snaps
+        if ((snapwnd.top - thresholdx < *posy && *posy < snapwnd.bottom + thresholdx)
+        || (*posy - thresholdx < snapwnd.top && snapwnd.top < *posy + *wndheight + thresholdx))
+        {
+            int snapinside_cond = (snapinside || *posy + *wndheight - thresholdx < snapwnd.top ||
+                                   snapwnd.bottom < *posy + thresholdx);
+            if (state.resize.x == RESIZE_LEFT && *posx - thresholdx < snapwnd.right &&
+                snapwnd.right < *posx + thresholdx)
+            {
+                // The left edge of the dragged window will snap to this window's right edge
+                stuckleft = 1;
+                stickleft = snapwnd.right;
+                thresholdx = snapwnd.right - *posx;
+            }
+            else if (snapinside_cond && state.resize.x == RESIZE_RIGHT &&
+                     *posx + *wndwidth - thresholdx < snapwnd.right && snapwnd.right < *posx + *wndwidth + thresholdx)
+            {
+                // The right edge of the dragged window will snap to this window's right edge
+                stuckright = 1;
+                stickright = snapwnd.right;
+                thresholdx = snapwnd.right - (*posx + *wndwidth);
+            }
+            else if (snapinside_cond && state.resize.x == RESIZE_LEFT && *posx - thresholdx < snapwnd.left &&
+                     snapwnd.left < *posx + thresholdx)
+            {
+                // The left edge of the dragged window will snap to this window's left edge
+                stuckleft = 1;
+                stickleft = snapwnd.left;
+                thresholdx = snapwnd.left - *posx;
+            }
+            else if (state.resize.x == RESIZE_RIGHT && *posx + *wndwidth - thresholdx < snapwnd.left &&
+                     snapwnd.left < *posx + *wndwidth + thresholdx)
+            {
+                // The right edge of the dragged window will snap to this window's left edge
+                stuckright = 1;
+                stickright = snapwnd.left;
+                thresholdx = snapwnd.left - (*posx + *wndwidth);
+            }
+        }
+        
+        // Check if posy snaps
+        if ((snapwnd.left - thresholdy < *posx && *posx < snapwnd.right + thresholdy)
+            || (*posx - thresholdy < snapwnd.left && snapwnd.left < *posx + *wndwidth + thresholdy))
+        {
+            int snapinside_cond = (snapinside || *posx + *wndwidth - thresholdy < snapwnd.left ||
+                                   snapwnd.right < *posx + thresholdy);
+            if (state.resize.y == RESIZE_TOP && *posy - thresholdy < snapwnd.bottom &&
+                snapwnd.bottom < *posy + thresholdy)
+            {
+                // The top edge of the dragged window will snap to this window's bottom edge
+                stucktop = 1;
+                sticktop = snapwnd.bottom;
+                thresholdy = snapwnd.bottom - *posy;
+            }
+            else if (snapinside_cond && state.resize.y == RESIZE_BOTTOM &&
+                     *posy + *wndheight - thresholdy < snapwnd.bottom &&
+                     snapwnd.bottom < *posy + *wndheight + thresholdy)
+            {
+                // The bottom edge of the dragged window will snap to this window's bottom edge
+                stuckbottom = 1;
+                stickbottom = snapwnd.bottom;
+                thresholdy = snapwnd.bottom - (*posy + *wndheight);
+            }
+            else if (snapinside_cond && state.resize.y == RESIZE_TOP && *posy - thresholdy < snapwnd.top &&
+                     snapwnd.top < *posy + thresholdy)
+            {
+                // The top edge of the dragged window will snap to this window's top edge
+                stucktop = 1;
+                sticktop = snapwnd.top;
+                thresholdy = snapwnd.top - *posy;
+            }
+            else if (state.resize.y == RESIZE_BOTTOM && *posy + *wndheight - thresholdy < snapwnd.top &&
+                     snapwnd.top < *posy + *wndheight + thresholdy)
+            {
+                // The bottom edge of the dragged window will snap to this window's top edge
+                stuckbottom = 1;
+                stickbottom = snapwnd.top;
+                thresholdy = snapwnd.top - (*posy + *wndheight);
+            }
+        }
     }
-    else if (j < numwnds) {
-      snapwnd = wnds[j];
-      snapinside = (sharedstate.snap != 2);
-      j++;
+    
+    // Update posx, posy, wndwidth and wndheight
+    if (stuckleft)
+    {
+        *wndwidth = *wndwidth + *posx - stickleft;
+        *posx = stickleft;
     }
-
-    // Check if posx snaps
-    if ((snapwnd.top-thresholdx < *posy && *posy < snapwnd.bottom+thresholdx)
-     || (*posy-thresholdx < snapwnd.top && snapwnd.top < *posy+*wndheight+thresholdx)) {
-      int snapinside_cond = (snapinside || *posy+*wndheight-thresholdx < snapwnd.top || snapwnd.bottom < *posy+thresholdx);
-      if (state.resize.x == RESIZE_LEFT && *posx-thresholdx < snapwnd.right && snapwnd.right < *posx+thresholdx) {
-        // The left edge of the dragged window will snap to this window's right edge
-        stuckleft = 1;
-        stickleft = snapwnd.right;
-        thresholdx = snapwnd.right-*posx;
-      }
-      else if (snapinside_cond && state.resize.x == RESIZE_RIGHT && *posx+*wndwidth-thresholdx < snapwnd.right && snapwnd.right < *posx+*wndwidth+thresholdx) {
-        // The right edge of the dragged window will snap to this window's right edge
-        stuckright = 1;
-        stickright = snapwnd.right;
-        thresholdx = snapwnd.right-(*posx+*wndwidth);
-      }
-      else if (snapinside_cond && state.resize.x == RESIZE_LEFT && *posx-thresholdx < snapwnd.left && snapwnd.left < *posx+thresholdx) {
-        // The left edge of the dragged window will snap to this window's left edge
-        stuckleft = 1;
-        stickleft = snapwnd.left;
-        thresholdx = snapwnd.left-*posx;
-      }
-      else if (state.resize.x == RESIZE_RIGHT && *posx+*wndwidth-thresholdx < snapwnd.left && snapwnd.left < *posx+*wndwidth+thresholdx) {
-        // The right edge of the dragged window will snap to this window's left edge
-        stuckright = 1;
-        stickright = snapwnd.left;
-        thresholdx = snapwnd.left-(*posx+*wndwidth);
-      }
+    if (stucktop)
+    {
+        *wndheight = *wndheight + *posy - sticktop;
+        *posy = sticktop;
     }
-
-    // Check if posy snaps
-    if ((snapwnd.left-thresholdy < *posx && *posx < snapwnd.right+thresholdy)
-     || (*posx-thresholdy < snapwnd.left && snapwnd.left < *posx+*wndwidth+thresholdy)) {
-      int snapinside_cond = (snapinside || *posx+*wndwidth-thresholdy < snapwnd.left || snapwnd.right < *posx+thresholdy);
-      if (state.resize.y == RESIZE_TOP && *posy-thresholdy < snapwnd.bottom && snapwnd.bottom < *posy+thresholdy) {
-        // The top edge of the dragged window will snap to this window's bottom edge
-        stucktop = 1;
-        sticktop = snapwnd.bottom;
-        thresholdy = snapwnd.bottom-*posy;
-      }
-      else if (snapinside_cond && state.resize.y == RESIZE_BOTTOM && *posy+*wndheight-thresholdy < snapwnd.bottom && snapwnd.bottom < *posy+*wndheight+thresholdy) {
-        // The bottom edge of the dragged window will snap to this window's bottom edge
-        stuckbottom = 1;
-        stickbottom = snapwnd.bottom;
-        thresholdy = snapwnd.bottom-(*posy+*wndheight);
-      }
-      else if (snapinside_cond && state.resize.y == RESIZE_TOP && *posy-thresholdy < snapwnd.top && snapwnd.top < *posy+thresholdy) {
-        // The top edge of the dragged window will snap to this window's top edge
-        stucktop = 1;
-        sticktop = snapwnd.top;
-        thresholdy = snapwnd.top-*posy;
-      }
-      else if (state.resize.y == RESIZE_BOTTOM && *posy+*wndheight-thresholdy < snapwnd.top && snapwnd.top < *posy+*wndheight+thresholdy) {
-        // The bottom edge of the dragged window will snap to this window's top edge
-        stuckbottom = 1;
-        stickbottom = snapwnd.top;
-        thresholdy = snapwnd.top-(*posy+*wndheight);
-      }
+    if (stuckright)
+    {
+        *wndwidth = stickright - *posx;
     }
-  }
-
-  // Update posx, posy, wndwidth and wndheight
-  if (stuckleft) {
-    *wndwidth = *wndwidth+*posx-stickleft;
-    *posx = stickleft;
-  }
-  if (stucktop) {
-    *wndheight = *wndheight+*posy-sticktop;
-    *posy = sticktop;
-  }
-  if (stuckright) {
-    *wndwidth = stickright-*posx;
-  }
-  if (stuckbottom) {
-    *wndheight = stickbottom-*posy;
-  }
+    if (stuckbottom)
+    {
+        *wndheight = stickbottom - *posy;
+    }
 }
 
 #ifdef _WIN64
 
 // x64 keyhook needs only to check when the shift key is depressed
-__declspec(dllexport) LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  if (nCode == HC_ACTION) {
-    int vkey = ((PKBDLLHOOKSTRUCT)lParam)->vkCode;
-
-    if (vkey == VK_LSHIFT || vkey == VK_RSHIFT) {
-      if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
-        sharedstate.shift = 1;
-        sharedstate.snap = 3;
-      }
-      else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
-        sharedstate.shift = 0;
-        sharedstate.snap = sharedsettings.AutoSnap;
-      }
+__declspec(dllexport) LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (nCode == HC_ACTION)
+    {
+        int vkey = ((PKBDLLHOOKSTRUCT) lParam)->vkCode;
+        
+        if (vkey == VK_LSHIFT || vkey == VK_RSHIFT)
+        {
+            if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+            {
+                sharedstate.shift = 1;
+                sharedstate.snap = 3;
+            }
+            else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
+            {
+                sharedstate.shift = 0;
+                sharedstate.snap = sharedsettings.AutoSnap;
+            }
+        }
+        else if (vkey == VK_SPACE
+                 && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+                 && (sharedstate.action || msgaction) && sharedstate.snap)
+        {
+            sharedstate.snap = 0;
+        }
     }
-    else if (vkey == VK_SPACE
-         && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
-         && (sharedstate.action || msgaction) && sharedstate.snap) {
-      sharedstate.snap = 0;
-    }
-  }
-
-  return CallNextHookEx(NULL, nCode, wParam, lParam);
+    
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
 #else
@@ -2033,405 +2166,483 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 #endif
 
 // Msghook
-__declspec(dllexport) LRESULT CALLBACK CustomWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
-  if (unload) {
-    msgaction = ACTION_NONE;
-    subclassed = !RemoveWindowSubclass(hwnd, CustomWndProc, 0);
-  }
-  else if (msg == WM_WINDOWPOSCHANGING && sharedstate.snap && !sharedstate.action) {
-    WINDOWPOS *wndpos = (WINDOWPOS*)lParam;
-    if (msgaction == ACTION_MOVE && !(wndpos->flags&SWP_NOMOVE)) {
-      MoveSnap(&wndpos->x, &wndpos->y, wndpos->cx, wndpos->cy);
+__declspec(dllexport) LRESULT CALLBACK
+CustomWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+{
+    if (unload)
+    {
+        msgaction = ACTION_NONE;
+        subclassed = !RemoveWindowSubclass(hwnd, CustomWndProc, 0);
     }
-    else if (msgaction == ACTION_RESIZE && !(wndpos->flags&SWP_NOSIZE)) {
-      ResizeSnap(&wndpos->x, &wndpos->y, &wndpos->cx, &wndpos->cy);
+    else if (msg == WM_WINDOWPOSCHANGING && sharedstate.snap && !sharedstate.action)
+    {
+        WINDOWPOS *wndpos = (WINDOWPOS *) lParam;
+        if (msgaction == ACTION_MOVE && !(wndpos->flags & SWP_NOMOVE))
+        {
+            MoveSnap(&wndpos->x, &wndpos->y, wndpos->cx, wndpos->cy);
+        }
+        else if (msgaction == ACTION_RESIZE && !(wndpos->flags & SWP_NOSIZE))
+        {
+            ResizeSnap(&wndpos->x, &wndpos->y, &wndpos->cx, &wndpos->cy);
+        }
     }
-  }
-  else if (msg == WM_EXITSIZEMOVE || msg == WM_DESTROY) {
-    msgaction = ACTION_NONE;
-    subclassed = !RemoveWindowSubclass(hwnd, CustomWndProc, 0);
-    if (subclassed) {
-      Error(L"RemoveWindowSubclass(hwnd, CustomWndProc, 0)", L"Failed to remove window subclassing.", -1);
-      return DefSubclassProc(hwnd, msg, wParam, lParam);
+    else if (msg == WM_EXITSIZEMOVE || msg == WM_DESTROY)
+    {
+        msgaction = ACTION_NONE;
+        subclassed = !RemoveWindowSubclass(hwnd, CustomWndProc, 0);
+        if (subclassed)
+        {
+            Error(L"RemoveWindowSubclass(hwnd, CustomWndProc, 0)", L"Failed to remove window subclassing.", -1);
+            return DefSubclassProc(hwnd, msg, wParam, lParam);
+        }
+        state.hwnd = NULL;
     }
-    state.hwnd = NULL;
-  }
-
-  /*
-  // Fun code to trap windows on screen
-  if (msg == WM_WINDOWPOSCHANGING) {
-    WINDOWPOS *wndpos = (WINDOWPOS*)lParam;
-    if (wndpos->x < 0) {
-      wndpos->x = 0;
+    
+    /*
+    // Fun code to trap windows on screen
+    if (msg == WM_WINDOWPOSCHANGING) {
+      WINDOWPOS *wndpos = (WINDOWPOS*)lParam;
+      if (wndpos->x < 0) {
+        wndpos->x = 0;
+      }
+      if (wndpos->y < 0) {
+        wndpos->y = 0;
+      }
+      if (wndpos->x+wndpos->cx > 1920) {
+        wndpos->x = 1920-wndpos->cx;
+      }
+      if (wndpos->y+wndpos->cy > 1140) {
+        wndpos->y = 1140-wndpos->cy;
+      }
     }
-    if (wndpos->y < 0) {
-      wndpos->y = 0;
-    }
-    if (wndpos->x+wndpos->cx > 1920) {
-      wndpos->x = 1920-wndpos->cx;
-    }
-    if (wndpos->y+wndpos->cy > 1140) {
-      wndpos->y = 1140-wndpos->cy;
-    }
-  }
-  */
-
-  return DefSubclassProc(hwnd, msg, wParam, lParam);
+    */
+    
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
 // CallWndProc is called in the context of the thread that calls SendMessage, not the thread that receives the message.
 // Thus we have to explicitly share the memory we want CallWndProc to be able to access (e.g. sharedstate)
 // Variables that are not shared, e.g. the blacklist, are loaded individually for each process.
-__declspec(dllexport) LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  if (unload) {
-    msgaction = ACTION_NONE;
-    if (subclassed) {
-      subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
+__declspec(dllexport) LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (unload)
+    {
+        msgaction = ACTION_NONE;
+        if (subclassed)
+        {
+            subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
+        }
     }
-  }
-  else if (nCode == HC_ACTION && !sharedstate.action) {
-    CWPSTRUCT *msg = (CWPSTRUCT*)lParam;
-
-    if (msg->message == WM_ENTERSIZEMOVE
-     && (!subclassed || state.hwnd != msg->hwnd)
-     && IsWindowVisible(msg->hwnd)
-     && ((GetWindowLongPtr(msg->hwnd,GWL_STYLE)&WS_CAPTION) == WS_CAPTION || blacklisted(msg->hwnd,&settings.Snaplist))
-     && !IsIconic(msg->hwnd) && !IsZoomed(msg->hwnd)
-    ) {
-      // MDI or not (note: does not require MDI setting)
-      HWND root = GetAncestor(msg->hwnd, GA_ROOT);
-      HWND mdiclient = NULL;
-      if (msg->hwnd != root) {
-        LONG_PTR exstyle = GetWindowLongPtr(msg->hwnd, GWL_EXSTYLE);
-        if ((exstyle&WS_EX_MDICHILD)) {
-          mdiclient = GetParent(msg->hwnd);
+    else if (nCode == HC_ACTION && !sharedstate.action)
+    {
+        CWPSTRUCT *msg = (CWPSTRUCT *) lParam;
+        
+        if (msg->message == WM_ENTERSIZEMOVE
+            && (!subclassed || state.hwnd != msg->hwnd)
+            && IsWindowVisible(msg->hwnd)
+            && ((GetWindowLongPtr(msg->hwnd, GWL_STYLE) & WS_CAPTION) == WS_CAPTION ||
+                blacklisted(msg->hwnd, &settings.Snaplist))
+            && !IsIconic(msg->hwnd) && !IsZoomed(msg->hwnd)
+                )
+        {
+            // MDI or not (note: does not require MDI setting)
+            HWND root = GetAncestor(msg->hwnd, GA_ROOT);
+            HWND mdiclient = NULL;
+            if (msg->hwnd != root)
+            {
+                LONG_PTR exstyle = GetWindowLongPtr(msg->hwnd, GWL_EXSTYLE);
+                if ((exstyle & WS_EX_MDICHILD))
+                {
+                    mdiclient = GetParent(msg->hwnd);
+                }
+                else
+                {
+                    return CallNextHookEx(NULL, nCode, wParam, lParam);
+                }
+            }
+            
+            // Return if window is blacklisted
+            if (blacklisted(msg->hwnd, &settings.Blacklist))
+            {
+                return CallNextHookEx(NULL, nCode, wParam, lParam);
+            }
+            
+            // Remove old subclassing if another window is currently subclassed
+            if (subclassed && IsWindow(state.hwnd))
+            {
+                subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
+                if (subclassed)
+                {
+                    Error(L"RemoveWindowSubclass(state.hwnd, CustomWndProc, 0)",
+                          L"Failed to remove window subclassing.", -1);
+                }
+            }
+            
+            // Update state
+            state.hwnd = msg->hwnd;
+            state.mdiclient = mdiclient;
+            
+            // Double check if a shift key is still being pressed
+            if (sharedstate.shift && !(GetAsyncKeyState(VK_SHIFT) & 0x8000))
+            {
+                sharedstate.shift = 0;
+                sharedstate.snap = sharedsettings.AutoSnap;
+            }
+            if (!sharedstate.snap)
+            {
+                sharedstate.snap = sharedsettings.AutoSnap;
+                if (!sharedstate.snap)
+                {
+                    return CallNextHookEx(NULL, nCode, wParam, lParam);
+                }
+            }
+            
+            // Subclass window
+            subclassed = SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0);
+            if (!subclassed)
+            {
+                Error(L"SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0)", L"Failed to subclass window.", -1);
+            }
         }
-        else {
-          return CallNextHookEx(NULL, nCode, wParam, lParam);
+        else if (msg->message == WM_WINDOWPOSCHANGING
+                 && !subclassed && state.hwnd == msg->hwnd && msgaction != ACTION_NONE
+                 && sharedstate.snap)
+        {
+            // Subclass window
+            subclassed = SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0);
+            if (!subclassed)
+            {
+                Error(L"SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0)", L"Failed to subclass window.", -1);
+            }
         }
-      }
-
-      // Return if window is blacklisted
-      if (blacklisted(msg->hwnd,&settings.Blacklist)) {
-        return CallNextHookEx(NULL, nCode, wParam, lParam);
-      }
-
-      // Remove old subclassing if another window is currently subclassed
-      if (subclassed && IsWindow(state.hwnd)) {
-        subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
-        if (subclassed) {
-          Error(L"RemoveWindowSubclass(state.hwnd, CustomWndProc, 0)", L"Failed to remove window subclassing.", -1);
+        else if (msg->message == WM_SYSCOMMAND)
+        {
+            WPARAM action = msg->wParam & 0xFFF0;
+            if (action == SC_MOVE)
+            {
+                msgaction = ACTION_MOVE;
+            }
+            else if (action == SC_SIZE)
+            {
+                msgaction = ACTION_RESIZE;
+                int edge = msg->wParam & 0x000F; // These are the undocumented bits (compatible with WMSZ_*)
+                // resize.x
+                if (edge == WMSZ_TOP || edge == WMSZ_BOTTOM)
+                {
+                    state.resize.x = RESIZE_CENTER;
+                }
+                if (edge == WMSZ_LEFT || edge == WMSZ_TOPLEFT || edge == WMSZ_BOTTOMLEFT)
+                {
+                    state.resize.x = RESIZE_LEFT;
+                }
+                else if (edge == WMSZ_RIGHT || edge == WMSZ_TOPRIGHT || edge == WMSZ_BOTTOMRIGHT)
+                {
+                    state.resize.x = RESIZE_RIGHT;
+                }
+                // resize.y
+                if (edge == WMSZ_LEFT || edge == WMSZ_RIGHT)
+                {
+                    state.resize.y = RESIZE_CENTER;
+                }
+                if (edge == WMSZ_TOP || edge == WMSZ_TOPLEFT || edge == WMSZ_TOPRIGHT)
+                {
+                    state.resize.y = RESIZE_TOP;
+                }
+                else if (edge == WMSZ_BOTTOM || edge == WMSZ_BOTTOMLEFT || edge == WMSZ_BOTTOMRIGHT)
+                {
+                    state.resize.y = RESIZE_BOTTOM;
+                }
+                // Set offset
+                state.offset.x = 0;
+                state.offset.y = 0;
+            }
         }
-      }
-
-      // Update state
-      state.hwnd = msg->hwnd;
-      state.mdiclient = mdiclient;
-
-      // Double check if a shift key is still being pressed
-      if (sharedstate.shift && !(GetAsyncKeyState(VK_SHIFT)&0x8000)) {
-        sharedstate.shift = 0;
-        sharedstate.snap = sharedsettings.AutoSnap;
-      }
-      if (!sharedstate.snap) {
-        sharedstate.snap = sharedsettings.AutoSnap;
-        if (!sharedstate.snap) {
-          return CallNextHookEx(NULL, nCode, wParam, lParam);
+        else if (msg->message == WM_EXITSIZEMOVE)
+        {
+            msgaction = ACTION_NONE;
         }
-      }
-
-      // Subclass window
-      subclassed = SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0);
-      if (!subclassed) {
-        Error(L"SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0)", L"Failed to subclass window.", -1);
-      }
     }
-    else if (msg->message == WM_WINDOWPOSCHANGING
-     && !subclassed && state.hwnd == msg->hwnd && msgaction != ACTION_NONE
-     && sharedstate.snap) {
-      // Subclass window
-      subclassed = SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0);
-      if (!subclassed) {
-        Error(L"SetWindowSubclass(state.hwnd, CustomWndProc, 0, 0)", L"Failed to subclass window.", -1);
-      }
-    }
-    else if (msg->message == WM_SYSCOMMAND) {
-      WPARAM action = msg->wParam&0xFFF0;
-      if (action == SC_MOVE) {
-        msgaction = ACTION_MOVE;
-      }
-      else if (action == SC_SIZE) {
-        msgaction = ACTION_RESIZE;
-        int edge = msg->wParam&0x000F; // These are the undocumented bits (compatible with WMSZ_*)
-        // resize.x
-        if (edge == WMSZ_TOP || edge == WMSZ_BOTTOM) {
-          state.resize.x = RESIZE_CENTER;
-        }
-        if (edge == WMSZ_LEFT || edge == WMSZ_TOPLEFT || edge == WMSZ_BOTTOMLEFT) {
-          state.resize.x = RESIZE_LEFT;
-        }
-        else if (edge == WMSZ_RIGHT || edge == WMSZ_TOPRIGHT || edge == WMSZ_BOTTOMRIGHT) {
-          state.resize.x = RESIZE_RIGHT;
-        }
-        // resize.y
-        if (edge == WMSZ_LEFT || edge == WMSZ_RIGHT) {
-          state.resize.y = RESIZE_CENTER;
-        }
-        if (edge == WMSZ_TOP || edge == WMSZ_TOPLEFT || edge == WMSZ_TOPRIGHT) {
-          state.resize.y = RESIZE_TOP;
-        }
-        else if (edge == WMSZ_BOTTOM || edge == WMSZ_BOTTOMLEFT || edge == WMSZ_BOTTOMRIGHT) {
-          state.resize.y = RESIZE_BOTTOM;
-        }
-        // Set offset
-        state.offset.x = 0;
-        state.offset.y = 0;
-      }
-    }
-    else if (msg->message == WM_EXITSIZEMOVE) {
-      msgaction = ACTION_NONE;
-    }
-  }
-
-  return CallNextHookEx(NULL, nCode, wParam, lParam);
+    
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-__declspec(dllexport) void Unload() {
-  sharedsettings_loaded = 0;
-  unload = 1;
-  #ifndef _WIN64
-  if (mousehook) {
-    if (UnhookWindowsHookEx(mousehook) == 0) {
-      Error(L"UnhookWindowsHookEx(mousehook)", L"Could not unhook mouse. Try restarting "APP_NAME".", GetLastError());
+__declspec(dllexport) void Unload()
+{
+    sharedsettings_loaded = 0;
+    unload = 1;
+    #ifndef _WIN64
+    if (mousehook) {
+      if (UnhookWindowsHookEx(mousehook) == 0) {
+        Error(L"UnhookWindowsHookEx(mousehook)", L"Could not unhook mouse. Try restarting "APP_NAME".", GetLastError());
+      }
+      mousehook = NULL;
     }
-    mousehook = NULL;
-  }
-  DestroyWindow(g_hwnd);
-  #endif
+    DestroyWindow(g_hwnd);
+    #endif
 }
 
-BOOL APIENTRY DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved) {
-  if (reason == DLL_PROCESS_ATTACH) {
-    hinstDLL = hInst;
-    // Load settings
-    wchar_t txt[1000];
-    // Settings shared with CallWndProc hooks
-    if (!sharedsettings_loaded) {
-      sharedsettings_loaded = 1;
-      unload = 0;
-      sharedsettings.Hotkeys.length = 0;
-
-      // Store path to ini file at initial load so CallWndProc hooks can find it
-      GetModuleFileName(NULL, inipath, ARRAY_SIZE(inipath));
-      PathRemoveFileSpec(inipath);
-      wcscat(inipath, L"\\"APP_NAME".ini");
-
-      // [General]
-      GetPrivateProfileString(L"General", L"AutoFocus", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.AutoFocus = _wtoi(txt);
-      GetPrivateProfileString(L"General", L"AutoSnap", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.AutoSnap = sharedstate.snap = _wtoi(txt);
-      GetPrivateProfileString(L"General", L"Aero", L"2", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.Aero = _wtoi(txt);
-      GetPrivateProfileString(L"General", L"InactiveScroll", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.InactiveScroll = _wtoi(txt);
-      GetPrivateProfileString(L"General", L"MDI", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.MDI = _wtoi(txt);
-
-      // [Advanced]
-      GetPrivateProfileString(L"Advanced", L"AutoRemaximize", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.AutoRemaximize = _wtoi(txt);
-      GetPrivateProfileString(L"Advanced", L"SnapThreshold", L"20", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.SnapThreshold = _wtoi(txt);
-      GetPrivateProfileString(L"Advanced", L"FocusOnTyping", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.FocusOnTyping = _wtoi(txt);
-
-      // Detect if Aero Snap is enabled
-      if (sharedsettings.Aero == 2) {
-        /*
-        BOOL enabled;
-        SystemParametersInfo(SPI_GETWINARRANGING, 0, &enabled, 0);
-        DBG("SPI_GETWINARRANGING: %d", enabled);
-        SystemParametersInfo(SPI_GETDOCKMOVING, 0, &enabled, 0);
-        DBG("SPI_GETDOCKMOVING: %d", enabled);
-        sharedsettings.Aero = !!enabled;
-        */
-        HKEY key;
-        DWORD len = sizeof(txt);
-        RegOpenKeyEx(HKEY_CURRENT_USER, L"Control Panel\\Desktop", 0, KEY_QUERY_VALUE, &key);
-        int error = RegQueryValueEx(key, L"WindowArrangementActive", NULL, NULL, (LPBYTE)txt, &len);
-        RegCloseKey(key);
-        if (error == ERROR_SUCCESS) {
-          sharedsettings.Aero = _wtoi(txt);
+BOOL APIENTRY DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
+{
+    if (reason == DLL_PROCESS_ATTACH)
+    {
+        hinstDLL = hInst;
+        // Load settings
+        wchar_t txt[1000];
+        // Settings shared with CallWndProc hooks
+        if (!sharedsettings_loaded)
+        {
+            sharedsettings_loaded = 1;
+            unload = 0;
+            sharedsettings.Hotkeys.length = 0;
+            
+            // Store path to ini file at initial load so CallWndProc hooks can find it
+            GetModuleFileName(NULL, inipath, ARRAY_SIZE(inipath));
+            PathRemoveFileSpec(inipath);
+            wcscat(inipath, L"\\"APP_NAME".ini");
+            
+            // [General]
+            GetPrivateProfileString(L"General", L"AutoFocus", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.AutoFocus = _wtoi(txt);
+            GetPrivateProfileString(L"General", L"AutoSnap", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.AutoSnap = sharedstate.snap = _wtoi(txt);
+            GetPrivateProfileString(L"General", L"Aero", L"2", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.Aero = _wtoi(txt);
+            GetPrivateProfileString(L"General", L"InactiveScroll", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.InactiveScroll = _wtoi(txt);
+            GetPrivateProfileString(L"General", L"MDI", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.MDI = _wtoi(txt);
+            
+            // [Advanced]
+            GetPrivateProfileString(L"Advanced", L"AutoRemaximize", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.AutoRemaximize = _wtoi(txt);
+            GetPrivateProfileString(L"Advanced", L"SnapThreshold", L"20", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.SnapThreshold = _wtoi(txt);
+            GetPrivateProfileString(L"Advanced", L"FocusOnTyping", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.FocusOnTyping = _wtoi(txt);
+            
+            // Detect if Aero Snap is enabled
+            if (sharedsettings.Aero == 2)
+            {
+                /*
+                BOOL enabled;
+                SystemParametersInfo(SPI_GETWINARRANGING, 0, &enabled, 0);
+                DBG("SPI_GETWINARRANGING: %d", enabled);
+                SystemParametersInfo(SPI_GETDOCKMOVING, 0, &enabled, 0);
+                DBG("SPI_GETDOCKMOVING: %d", enabled);
+                sharedsettings.Aero = !!enabled;
+                */
+                HKEY key;
+                DWORD len = sizeof(txt);
+                RegOpenKeyEx(HKEY_CURRENT_USER, L"Control Panel\\Desktop", 0, KEY_QUERY_VALUE, &key);
+                int error = RegQueryValueEx(key, L"WindowArrangementActive", NULL, NULL, (LPBYTE) txt, &len);
+                RegCloseKey(key);
+                if (error == ERROR_SUCCESS)
+                {
+                    sharedsettings.Aero = _wtoi(txt);
+                }
+            }
+            
+            // [Performance]
+            GetPrivateProfileString(L"Performance", L"Cursor", L"1", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.Performance.Cursor = _wtoi(txt);
+            if (sharedsettings.Performance.Cursor)
+            {
+                cursorwnd = FindWindow(APP_NAME, NULL);
+                #ifndef _WIN64
+                cursors[HAND]     = LoadImage(NULL, IDC_HAND,     IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                cursors[SIZENWSE] = LoadImage(NULL, IDC_SIZENWSE, IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                cursors[SIZENESW] = LoadImage(NULL, IDC_SIZENESW, IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                cursors[SIZENS]   = LoadImage(NULL, IDC_SIZENS,   IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                cursors[SIZEWE]   = LoadImage(NULL, IDC_SIZEWE,   IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                cursors[SIZEALL]  = LoadImage(NULL, IDC_SIZEALL,  IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
+                #endif
+            }
+            GetPrivateProfileString(L"Performance", L"MoveRate", L"1", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.Performance.MoveRate = _wtoi(txt);
+            if (sharedsettings.Performance.MoveRate < 1)
+            { sharedsettings.Performance.MoveRate = 1; }
+            GetPrivateProfileString(L"Performance", L"ResizeRate", L"1", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.Performance.ResizeRate = _wtoi(txt);
+            if (sharedsettings.Performance.ResizeRate < 1)
+            { sharedsettings.Performance.ResizeRate = 1; }
+            
+            // [Input]
+            struct
+            {
+                wchar_t *key;
+                wchar_t *def;
+                enum action *ptr;
+            } buttons[] = {
+                    {L"LMB",    L"Move",    &sharedsettings.Mouse.LMB},
+                    {L"MMB",    L"Resize",  &sharedsettings.Mouse.MMB},
+                    {L"RMB",    L"Resize",  &sharedsettings.Mouse.RMB},
+                    {L"MB4",    L"Nothing", &sharedsettings.Mouse.MB4},
+                    {L"MB5",    L"Nothing", &sharedsettings.Mouse.MB5},
+                    {L"Scroll", L"Nothing", &sharedsettings.Mouse.Scroll},
+                    {NULL}
+            };
+            int i;
+            for (i = 0; buttons[i].key != NULL; i++)
+            {
+                GetPrivateProfileString(L"Input", buttons[i].key, buttons[i].def, txt, ARRAY_SIZE(txt), inipath);
+                if (!wcsicmp(txt, L"Move"))
+                { *buttons[i].ptr = ACTION_MOVE; }
+                else if (!wcsicmp(txt, L"Resize"))
+                { *buttons[i].ptr = ACTION_RESIZE; }
+                else if (!wcsicmp(txt, L"Minimize"))
+                { *buttons[i].ptr = ACTION_MINIMIZE; }
+                else if (!wcsicmp(txt, L"Center"))
+                { *buttons[i].ptr = ACTION_CENTER; }
+                else if (!wcsicmp(txt, L"AlwaysOnTop"))
+                { *buttons[i].ptr = ACTION_ALWAYSONTOP; }
+                else if (!wcsicmp(txt, L"Close"))
+                { *buttons[i].ptr = ACTION_CLOSE; }
+                else if (!wcsicmp(txt, L"Lower"))
+                { *buttons[i].ptr = ACTION_LOWER; }
+                else if (!wcsicmp(txt, L"AltTab"))
+                { *buttons[i].ptr = ACTION_ALTTAB; }
+                else if (!wcsicmp(txt, L"Volume"))
+                { *buttons[i].ptr = ACTION_VOLUME; }
+                else if (!wcsicmp(txt, L"Transparency"))
+                { *buttons[i].ptr = ACTION_TRANSPARENCY; }
+                else
+                { *buttons[i].ptr = ACTION_NONE; }
+            }
+            
+            GetPrivateProfileString(L"Input", L"LowerWithMMB", L"0", txt, ARRAY_SIZE(txt), inipath);
+            sharedsettings.LowerWithMMB = _wtoi(txt);
+            
+            unsigned int temp;
+            int numread;
+            GetPrivateProfileString(L"Input", L"Hotkeys", L"A4 A5", txt, ARRAY_SIZE(txt), inipath);
+            wchar_t *pos = txt;
+            while (*pos != '\0' && swscanf(pos, L"%02X%n", &temp, &numread) != EOF)
+            {
+                // Bail if we are out of space
+                if (sharedsettings.Hotkeys.length == MAXKEYS)
+                {
+                    break;
+                }
+                // Store key
+                sharedsettings.Hotkeys.keys[sharedsettings.Hotkeys.length++] = temp;
+                pos += numread;
+            }
+            
+            // Zero-out wnddb hwnds
+            for (i = 0; i < NUMWNDDB; i++)
+            {
+                wnddb.items[i].hwnd = NULL;
+            }
+            wnddb.pos = &wnddb.items[0];
+            
+            // Create window for timers
+            #ifndef _WIN64
+            WNDCLASSEX wnd = { sizeof(WNDCLASSEX), 0, WindowProc, 0, 0, hInst, NULL, NULL, NULL, NULL, APP_NAME"-hooks", NULL };
+            RegisterClassEx(&wnd);
+            g_hwnd = CreateWindowEx(0, wnd.lpszClassName, wnd.lpszClassName, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_MESSAGE, NULL, hInst, NULL);
+            // Create a timer to do further initialization
+            SetTimer(g_hwnd, INIT_TIMER, 10, NULL);
+            #endif
         }
-      }
-
-      // [Performance]
-      GetPrivateProfileString(L"Performance", L"Cursor", L"1", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.Performance.Cursor = _wtoi(txt);
-      if (sharedsettings.Performance.Cursor) {
-        cursorwnd = FindWindow(APP_NAME, NULL);
-        #ifndef _WIN64
-        cursors[HAND]     = LoadImage(NULL, IDC_HAND,     IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        cursors[SIZENWSE] = LoadImage(NULL, IDC_SIZENWSE, IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        cursors[SIZENESW] = LoadImage(NULL, IDC_SIZENESW, IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        cursors[SIZENS]   = LoadImage(NULL, IDC_SIZENS,   IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        cursors[SIZEWE]   = LoadImage(NULL, IDC_SIZEWE,   IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        cursors[SIZEALL]  = LoadImage(NULL, IDC_SIZEALL,  IMAGE_CURSOR, 0, 0, LR_DEFAULTCOLOR|LR_SHARED);
-        #endif
-      }
-      GetPrivateProfileString(L"Performance", L"MoveRate", L"1", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.Performance.MoveRate = _wtoi(txt);
-      if (sharedsettings.Performance.MoveRate < 1) sharedsettings.Performance.MoveRate = 1;
-      GetPrivateProfileString(L"Performance", L"ResizeRate", L"1", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.Performance.ResizeRate = _wtoi(txt);
-      if (sharedsettings.Performance.ResizeRate < 1) sharedsettings.Performance.ResizeRate = 1;
-
-      // [Input]
-      struct {
-        wchar_t *key;
-        wchar_t *def;
-        enum action *ptr;
-      } buttons[] = {
-        {L"LMB",    L"Move",    &sharedsettings.Mouse.LMB},
-        {L"MMB",    L"Resize",  &sharedsettings.Mouse.MMB},
-        {L"RMB",    L"Resize",  &sharedsettings.Mouse.RMB},
-        {L"MB4",    L"Nothing", &sharedsettings.Mouse.MB4},
-        {L"MB5",    L"Nothing", &sharedsettings.Mouse.MB5},
-        {L"Scroll", L"Nothing", &sharedsettings.Mouse.Scroll},
-        {NULL}
-      };
-      int i;
-      for (i=0; buttons[i].key != NULL; i++) {
-        GetPrivateProfileString(L"Input", buttons[i].key, buttons[i].def, txt, ARRAY_SIZE(txt), inipath);
-        if      (!wcsicmp(txt,L"Move"))         *buttons[i].ptr = ACTION_MOVE;
-        else if (!wcsicmp(txt,L"Resize"))       *buttons[i].ptr = ACTION_RESIZE;
-        else if (!wcsicmp(txt,L"Minimize"))     *buttons[i].ptr = ACTION_MINIMIZE;
-        else if (!wcsicmp(txt,L"Center"))       *buttons[i].ptr = ACTION_CENTER;
-        else if (!wcsicmp(txt,L"AlwaysOnTop"))  *buttons[i].ptr = ACTION_ALWAYSONTOP;
-        else if (!wcsicmp(txt,L"Close"))        *buttons[i].ptr = ACTION_CLOSE;
-        else if (!wcsicmp(txt,L"Lower"))        *buttons[i].ptr = ACTION_LOWER;
-        else if (!wcsicmp(txt,L"AltTab"))       *buttons[i].ptr = ACTION_ALTTAB;
-        else if (!wcsicmp(txt,L"Volume"))       *buttons[i].ptr = ACTION_VOLUME;
-        else if (!wcsicmp(txt,L"Transparency")) *buttons[i].ptr = ACTION_TRANSPARENCY;
-        else                                    *buttons[i].ptr = ACTION_NONE;
-      }
-
-      GetPrivateProfileString(L"Input", L"LowerWithMMB", L"0", txt, ARRAY_SIZE(txt), inipath);
-      sharedsettings.LowerWithMMB = _wtoi(txt);
-
-      unsigned int temp;
-      int numread;
-      GetPrivateProfileString(L"Input", L"Hotkeys", L"A4 A5", txt, ARRAY_SIZE(txt), inipath);
-      wchar_t *pos = txt;
-      while (*pos != '\0' && swscanf(pos,L"%02X%n",&temp,&numread) != EOF) {
-        // Bail if we are out of space
-        if (sharedsettings.Hotkeys.length == MAXKEYS) {
-          break;
-        }
-        // Store key
-        sharedsettings.Hotkeys.keys[sharedsettings.Hotkeys.length++] = temp;
-        pos += numread;
-      }
-
-      // Zero-out wnddb hwnds
-      for (i=0; i < NUMWNDDB; i++) {
-        wnddb.items[i].hwnd = NULL;
-      }
-      wnddb.pos = &wnddb.items[0];
-
-      // Create window for timers
-      #ifndef _WIN64
-      WNDCLASSEX wnd = { sizeof(WNDCLASSEX), 0, WindowProc, 0, 0, hInst, NULL, NULL, NULL, NULL, APP_NAME"-hooks", NULL };
-      RegisterClassEx(&wnd);
-      g_hwnd = CreateWindowEx(0, wnd.lpszClassName, wnd.lpszClassName, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_MESSAGE, NULL, hInst, NULL);
-      // Create a timer to do further initialization
-      SetTimer(g_hwnd, INIT_TIMER, 10, NULL);
-      #endif
-    }
-
-    // [Blacklist]
-    int blacklist_alloc = 0;
-    struct blacklist *blacklist = &settings.ProcessBlacklist;
-    // Process ProcessBlacklist first
-    GetPrivateProfileString(L"Blacklist", L"ProcessBlacklist", L"", txt, ARRAY_SIZE(txt), inipath);
-    blacklist->data = malloc((wcslen(txt)+1)*sizeof(wchar_t));
-    wcscpy(blacklist->data, txt);
-    wchar_t *pos = blacklist->data;
-    while (pos != NULL) {
-      wchar_t *title = pos;
-      wchar_t *classname = wcsstr(pos, L"|");
-      // Move pos to next item (if any)
-      pos = wcsstr(pos, L",");
-      if (pos != NULL) {
-        *pos = '\0';
-        pos++;
-      }
-      // Split the item with NULLs
-      if (blacklist == &settings.ProcessBlacklist) {
-        // ProcessBlacklist does not use classname or wildcards
-        classname = NULL;
-      }
-      else {
-        if (classname != NULL) {
-          *classname = '\0';
-          classname++;
-        }
-        // Check if title or classname is wildcard
-        if (!wcscmp(title,L"*")) {
-          title = NULL;
-        }
-        if (classname != NULL && !wcscmp(classname,L"*")) {
-          classname = NULL;
-        }
-      }
-      // Check for invalid entry
-      if (classname == NULL && title != NULL && title[0] == '\0') {
-        title = NULL;
-      }
-      // Do not store item if it's empty
-      if (title != NULL || classname != NULL) {
-        // Make sure we have enough space
-        if (blacklist->length == blacklist_alloc) {
-          blacklist_alloc += 15;
-          blacklist->items = realloc(blacklist->items, blacklist_alloc*sizeof(struct blacklistitem));
-        }
-        // Store item
-        blacklist->items[blacklist->length].title = title;
-        blacklist->items[blacklist->length].classname = classname;
-        blacklist->length++;
-      }
-      // Switch gears?
-      if (pos == NULL && blacklist != &settings.Snaplist) {
-        blacklist_alloc = 0;
-        if (blacklist == &settings.ProcessBlacklist) {
-          blacklist = &settings.Blacklist;
-          GetPrivateProfileString(L"Blacklist", L"Blacklist", L"", txt, ARRAY_SIZE(txt), inipath);
-        }
-        else if (blacklist == &settings.Blacklist) {
-          blacklist = &settings.Snaplist;
-          GetPrivateProfileString(L"Blacklist", L"Snaplist", L"", txt, ARRAY_SIZE(txt), inipath);
-        }
-        blacklist->data = malloc((wcslen(txt)+1)*sizeof(wchar_t));
+        
+        // [Blacklist]
+        int blacklist_alloc = 0;
+        struct blacklist *blacklist = &settings.ProcessBlacklist;
+        // Process ProcessBlacklist first
+        GetPrivateProfileString(L"Blacklist", L"ProcessBlacklist", L"", txt, ARRAY_SIZE(txt), inipath);
+        blacklist->data = malloc((wcslen(txt) + 1) * sizeof(wchar_t));
         wcscpy(blacklist->data, txt);
-        pos = blacklist->data;
-      }
+        wchar_t *pos = blacklist->data;
+        while (pos != NULL)
+        {
+            wchar_t *title = pos;
+            wchar_t *classname = wcsstr(pos, L"|");
+            // Move pos to next item (if any)
+            pos = wcsstr(pos, L",");
+            if (pos != NULL)
+            {
+                *pos = '\0';
+                pos++;
+            }
+            // Split the item with NULLs
+            if (blacklist == &settings.ProcessBlacklist)
+            {
+                // ProcessBlacklist does not use classname or wildcards
+                classname = NULL;
+            }
+            else
+            {
+                if (classname != NULL)
+                {
+                    *classname = '\0';
+                    classname++;
+                }
+                // Check if title or classname is wildcard
+                if (!wcscmp(title, L"*"))
+                {
+                    title = NULL;
+                }
+                if (classname != NULL && !wcscmp(classname, L"*"))
+                {
+                    classname = NULL;
+                }
+            }
+            // Check for invalid entry
+            if (classname == NULL && title != NULL && title[0] == '\0')
+            {
+                title = NULL;
+            }
+            // Do not store item if it's empty
+            if (title != NULL || classname != NULL)
+            {
+                // Make sure we have enough space
+                if (blacklist->length == blacklist_alloc)
+                {
+                    blacklist_alloc += 15;
+                    blacklist->items = realloc(blacklist->items, blacklist_alloc * sizeof(struct blacklistitem));
+                }
+                // Store item
+                blacklist->items[blacklist->length].title = title;
+                blacklist->items[blacklist->length].classname = classname;
+                blacklist->length++;
+            }
+            // Switch gears?
+            if (pos == NULL && blacklist != &settings.Snaplist)
+            {
+                blacklist_alloc = 0;
+                if (blacklist == &settings.ProcessBlacklist)
+                {
+                    blacklist = &settings.Blacklist;
+                    GetPrivateProfileString(L"Blacklist", L"Blacklist", L"", txt, ARRAY_SIZE(txt), inipath);
+                }
+                else if (blacklist == &settings.Blacklist)
+                {
+                    blacklist = &settings.Snaplist;
+                    GetPrivateProfileString(L"Blacklist", L"Snaplist", L"", txt, ARRAY_SIZE(txt), inipath);
+                }
+                blacklist->data = malloc((wcslen(txt) + 1) * sizeof(wchar_t));
+                wcscpy(blacklist->data, txt);
+                pos = blacklist->data;
+            }
+        }
+        
+        // Allocate some memory
+        monitors_alloc++;
+        monitors = realloc(monitors, monitors_alloc * sizeof(RECT));
+        wnds_alloc += 20;
+        wnds = realloc(wnds, wnds_alloc * sizeof(RECT));
     }
-
-    // Allocate some memory
-    monitors_alloc++;
-    monitors = realloc(monitors, monitors_alloc*sizeof(RECT));
-    wnds_alloc += 20;
-    wnds = realloc(wnds, wnds_alloc*sizeof(RECT));
-  }
-  else if (reason == DLL_PROCESS_DETACH) {
-    // Remove subclassing if a window is currently subclassed
-    if (subclassed && IsWindow(state.hwnd)) {
-      subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
-      if (subclassed) {
-        Error(L"RemoveWindowSubclass(hwnd, CustomWndProc, 0)", L"Failed to remove window subclassing.", -1);
-      }
+    else if (reason == DLL_PROCESS_DETACH)
+    {
+        // Remove subclassing if a window is currently subclassed
+        if (subclassed && IsWindow(state.hwnd))
+        {
+            subclassed = !RemoveWindowSubclass(state.hwnd, CustomWndProc, 0);
+            if (subclassed)
+            {
+                Error(L"RemoveWindowSubclass(hwnd, CustomWndProc, 0)", L"Failed to remove window subclassing.", -1);
+            }
+        }
     }
-  }
-  return TRUE;
+    return TRUE;
 }

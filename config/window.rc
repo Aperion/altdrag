@@ -129,14 +129,14 @@ FONT 8, "Ms Shell Dlg", 400, 0, 1
 //
 // Cursor resources
 //
-IDI_FIND           CURSOR         "../media/find.cur"
+IDI_FIND           CURSOR         "media/find.cur"
 
 
 
 //
 // Icon resources
 //
-IDI_BIGICON        ICON           "../media/icon-big.ico"
+IDI_BIGICON        ICON           "media/icon-big.ico"
 
 
-IDI_FIND           ICON           "../media/find.ico"
+IDI_FIND           ICON           "media/find.ico"

@@ -6,7 +6,7 @@ tray_enabled ICON "media/tray-enabled.ico"
 #include "../config/window.rc"
 
 #ifdef _WIN64
-CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "include/x64.exe.manifest"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "x64.exe.manifest"
 #else
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "include/x86.exe.manifest"
 #endif
